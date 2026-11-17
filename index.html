@@ -1,0 +1,561 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Misi Penjelajah Data: Regresi Linier</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=Poppins:wght@300;400;600&display=swap');
+        
+        body {
+            font-family: 'Poppins', sans-serif;
+            background: linear-gradient(135deg, #0f2027, #203a43, #2c5364);
+            color: white;
+            overflow-x: hidden;
+            min-height: 100vh;
+        }
+
+        h1, h2, h3, .title-font {
+            font-family: 'Orbitron', sans-serif;
+        }
+
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+        }
+
+        canvas {
+            background: rgba(0, 0, 0, 0.4);
+            border-radius: 12px;
+            border: 2px solid #4ade80;
+            box-shadow: 0 0 15px rgba(74, 222, 128, 0.3);
+            width: 100%;
+            max-width: 500px;
+            cursor: crosshair;
+        }
+
+        /* Custom Slider Styling */
+        input[type=range] {
+            -webkit-appearance: none;
+            width: 100%;
+            background: transparent;
+        }
+        input[type=range]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            height: 20px;
+            width: 20px;
+            border-radius: 50%;
+            background: #4ade80;
+            cursor: pointer;
+            margin-top: -8px;
+            box-shadow: 0 0 10px #4ade80;
+        }
+        input[type=range]::-webkit-slider-runnable-track {
+            width: 100%;
+            height: 6px;
+            cursor: pointer;
+            background: #4b5563;
+            border-radius: 3px;
+        }
+
+        .btn-hover-effect {
+            transition: all 0.3s ease;
+        }
+        .btn-hover-effect:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 10px 20px rgba(0,0,0,0.4);
+        }
+
+        /* Modal Overlay */
+        #modal-overlay {
+            background: rgba(0, 0, 0, 0.8);
+            backdrop-filter: blur(5px);
+        }
+    </style>
+</head>
+<body class="flex items-center justify-center p-4">
+
+    <!-- Start Screen -->
+    <div id="start-screen" class="glass-panel p-8 rounded-2xl max-w-2xl w-full text-center fade-in">
+        <div class="text-6xl text-green-400 mb-4"><i class="fa-solid fa-satellite-dish"></i></div>
+        <h1 class="text-3xl md:text-5xl font-bold mb-4 text-transparent bg-clip-text bg-gradient-to-r from-green-300 to-blue-400">Misi Penjelajah Data</h1>
+        <h2 class="text-xl mb-6 text-gray-300">Asesmen Awal: Regresi Linier Kelas XII</h2>
+        <p class="mb-8 text-gray-300 leading-relaxed text-left">
+            Selamat datang, Navigator Data! Sebelum kita mempelajari rumus-rumus rumit tentang Regresi Linier, mari kita uji <b>insting dan intuisimu</b> dalam melihat pola data.<br><br>
+            <b>Misi Anda:</b><br>
+            1. <b>Fase 1:</b> Kenali arah pola data (Korelasi).<br>
+            2. <b>Fase 2:</b> Sesuaikan Garis Lurus agar pas di tengah-tengah kerumunan data (Garis Regresi/Best Fit).
+        </p>
+        <button onclick="startGame()" class="btn-hover-effect bg-gradient-to-r from-green-500 to-emerald-600 text-white font-bold py-3 px-8 rounded-full text-lg w-full md:w-auto title-font">
+            <i class="fa-solid fa-rocket mr-2"></i> MULAI MISI
+        </button>
+    </div>
+
+    <!-- Game Screen -->
+    <div id="game-screen" class="hidden glass-panel p-6 rounded-2xl max-w-4xl w-full flex flex-col items-center">
+        <!-- Header / Stats -->
+        <div class="w-full flex justify-between items-center mb-4 border-b border-gray-600 pb-4">
+            <div>
+                <span class="text-gray-400 text-sm block">Misi</span>
+                <span id="level-display" class="title-font text-xl font-bold text-green-400">1 / 5</span>
+            </div>
+            <div class="text-center">
+                <span class="text-gray-400 text-sm block">Fase</span>
+                <span id="phase-display" class="title-font text-lg font-bold text-blue-300">Tebak Korelasi</span>
+            </div>
+            <div class="text-right">
+                <span class="text-gray-400 text-sm block">Skor</span>
+                <span id="score-display" class="title-font text-xl font-bold text-yellow-400">0</span>
+            </div>
+        </div>
+
+        <!-- Canvas Area -->
+        <div class="w-full flex justify-center mb-6 relative">
+            <canvas id="gameCanvas" width="500" height="400"></canvas>
+            <!-- Overlay tooltip for coordinates -->
+            <div id="tooltip" class="absolute hidden bg-gray-800 text-xs px-2 py-1 rounded text-white pointer-events-none"></div>
+        </div>
+
+        <!-- Controls: Phase 1 (Multiple Choice) -->
+        <div id="controls-phase-1" class="w-full grid grid-cols-1 md:grid-cols-3 gap-4">
+            <button onclick="checkCorrelation('positif')" class="btn-hover-effect bg-blue-600 hover:bg-blue-500 text-white font-semibold py-3 px-4 rounded-xl border border-blue-400 flex flex-col items-center justify-center gap-2">
+                <i class="fa-solid fa-arrow-trend-up text-2xl"></i>
+                Korelasi Positif
+            </button>
+            <button onclick="checkCorrelation('negatif')" class="btn-hover-effect bg-red-600 hover:bg-red-500 text-white font-semibold py-3 px-4 rounded-xl border border-red-400 flex flex-col items-center justify-center gap-2">
+                <i class="fa-solid fa-arrow-trend-down text-2xl"></i>
+                Korelasi Negatif
+            </button>
+            <button onclick="checkCorrelation('nol')" class="btn-hover-effect bg-gray-600 hover:bg-gray-500 text-white font-semibold py-3 px-4 rounded-xl border border-gray-400 flex flex-col items-center justify-center gap-2">
+                <i class="fa-solid fa-scatter-chart text-2xl"></i>
+                Tidak Ada Korelasi
+            </button>
+        </div>
+
+        <!-- Controls: Phase 2 (Sliders) -->
+        <div id="controls-phase-2" class="hidden w-full flex flex-col gap-6">
+            <p class="text-center text-yellow-300 text-sm mb-2"><i class="fa-solid fa-lightbulb mr-1"></i> Geser slider di bawah agar garis berwarna kuning membelah kumpulan bintang seimbang mungkin!</p>
+            
+            <div class="flex flex-col gap-2">
+                <label class="flex justify-between text-sm font-semibold">
+                    <span>Kemiringan (Slope / m)</span>
+                    <span id="slope-val" class="text-green-400">0.0</span>
+                </label>
+                <input type="range" id="slope-slider" min="-2" max="2" step="0.1" value="0" oninput="updateLine()">
+            </div>
+            
+            <div class="flex flex-col gap-2">
+                <label class="flex justify-between text-sm font-semibold">
+                    <span>Posisi Awal (Intercept / c)</span>
+                    <span id="intercept-val" class="text-green-400">5.0</span>
+                </label>
+                <input type="range" id="intercept-slider" min="0" max="10" step="0.1" value="5" oninput="updateLine()">
+            </div>
+
+            <button onclick="checkLine()" class="btn-hover-effect mt-4 bg-gradient-to-r from-yellow-500 to-orange-500 text-white font-bold py-3 px-8 rounded-xl text-lg w-full">
+                <i class="fa-solid fa-check-circle mr-2"></i> KUNCI GARIS
+            </button>
+        </div>
+    </div>
+
+    <!-- End Screen -->
+    <div id="end-screen" class="hidden glass-panel p-8 rounded-2xl max-w-2xl w-full text-center">
+        <div class="text-6xl text-yellow-400 mb-4"><i class="fa-solid fa-trophy"></i></div>
+        <h1 class="text-4xl font-bold mb-2 title-font text-white">Misi Selesai!</h1>
+        <p class="text-lg text-gray-300 mb-6">Analisis kemampuan awalmu telah direkam.</p>
+        
+        <div class="bg-gray-800 p-6 rounded-xl mb-8 border border-gray-600">
+            <h3 class="text-2xl font-bold text-gray-400 mb-2">Total Skor</h3>
+            <div id="final-score" class="text-6xl font-bold text-green-400 title-font">0</div>
+        </div>
+
+        <p id="feedback-text" class="mb-8 text-lg font-semibold text-blue-300"></p>
+
+        <button onclick="location.reload()" class="btn-hover-effect bg-gray-600 hover:bg-gray-500 text-white font-bold py-3 px-8 rounded-full text-lg">
+            <i class="fa-solid fa-rotate-right mr-2"></i> Main Lagi
+        </button>
+    </div>
+
+    <!-- Custom Alert/Modal -->
+    <div id="modal-overlay" class="fixed inset-0 hidden items-center justify-center z-50">
+        <div id="modal-content" class="bg-gray-800 border-2 border-gray-600 p-6 rounded-2xl max-w-sm w-full text-center mx-4 shadow-2xl transform transition-transform scale-90">
+            <div id="modal-icon" class="text-5xl mb-4"></div>
+            <h2 id="modal-title" class="text-2xl font-bold mb-2"></h2>
+            <p id="modal-text" class="text-gray-300 mb-6"></p>
+            <button onclick="closeModal()" class="w-full bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded-xl transition">Lanjut</button>
+        </div>
+    </div>
+
+    <script>
+        // Game State Variables
+        let currentLevel = 0;
+        let totalScore = 0;
+        const totalLevels = 5; // 3 correlation, 2 drawing lines
+        let currentData = [];
+        let trueCorrelation = '';
+        let optimalM = 0;
+        let optimalC = 0;
+
+        // Canvas Setup
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const width = canvas.width;
+        const height = canvas.height;
+        const padding = 40; // padding for axes
+        
+        // Data range maps to (0-10) for x and y
+        const dataMax = 10;
+
+        const levelsConfig = [
+            { type: 'korelasi', truth: 'positif' },
+            { type: 'korelasi', truth: 'negatif' },
+            { type: 'korelasi', truth: 'nol' },
+            { type: 'garis', truth: 'positif' },
+            { type: 'garis', truth: 'negatif' }
+        ];
+
+        // Utility: Map data coordinates (0-10) to canvas pixels
+        function mapX(x) {
+            return padding + (x / dataMax) * (width - padding * 2);
+        }
+        function mapY(y) {
+            return height - padding - (y / dataMax) * (height - padding * 2);
+        }
+
+        // Generate Data based on desired correlation
+        function generateData(type) {
+            let data = [];
+            const numPoints = 15 + Math.floor(Math.random() * 10); // 15 to 25 points
+            
+            for(let i=0; i<numPoints; i++) {
+                let x = Math.random() * 8 + 1; // x between 1 and 9
+                let y;
+                
+                if (type === 'positif') {
+                    // y increases as x increases + noise
+                    y = x + (Math.random() * 4 - 2); 
+                } else if (type === 'negatif') {
+                    // y decreases as x increases + noise
+                    y = (10 - x) + (Math.random() * 4 - 2);
+                } else {
+                    // Random y regardless of x
+                    y = Math.random() * 8 + 1;
+                }
+                
+                // Clamp y between 0.5 and 9.5
+                y = Math.max(0.5, Math.min(9.5, y));
+                data.push({x, y});
+            }
+            return data;
+        }
+
+        // Calculate actual linear regression (Least Squares)
+        function calculateOptimalLine(data) {
+            let n = data.length;
+            let sumX = 0, sumY = 0, sumXY = 0, sumX2 = 0;
+            
+            data.forEach(p => {
+                sumX += p.x;
+                sumY += p.y;
+                sumXY += p.x * p.y;
+                sumX2 += p.x * p.x;
+            });
+            
+            let m = (n * sumXY - sumX * sumY) / (n * sumX2 - sumX * sumX);
+            let c = (sumY - m * sumX) / n;
+            
+            return { m, c };
+        }
+
+        // Drawing Function
+        function drawScene(data, userM = null, userC = null, showOptimal = false) {
+            ctx.clearRect(0, 0, width, height);
+            
+            // Draw Grid & Axes
+            ctx.strokeStyle = "rgba(255,255,255,0.1)";
+            ctx.lineWidth = 1;
+            for(let i=0; i<=10; i++) {
+                // Vertical lines
+                ctx.beginPath(); ctx.moveTo(mapX(i), mapY(0)); ctx.lineTo(mapX(i), mapY(10)); ctx.stroke();
+                // Horizontal lines
+                ctx.beginPath(); ctx.moveTo(mapX(0), mapY(i)); ctx.lineTo(mapX(10), mapY(i)); ctx.stroke();
+            }
+
+            // Draw Axes
+            ctx.strokeStyle = "#94a3b8"; // slate-400
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.moveTo(mapX(0), mapY(10)); // Y axis
+            ctx.lineTo(mapX(0), mapY(0));
+            ctx.lineTo(mapX(10), mapY(0)); // X axis
+            ctx.stroke();
+
+            // Labels
+            ctx.fillStyle = "#94a3b8";
+            ctx.font = "12px Poppins";
+            ctx.textAlign = "center";
+            ctx.fillText("X (Variabel Independen)", width/2, height - 10);
+            
+            ctx.save();
+            ctx.translate(15, height/2);
+            ctx.rotate(-Math.PI/2);
+            ctx.fillText("Y (Variabel Dependen)", 0, 0);
+            ctx.restore();
+
+            // Draw Points (Stars)
+            data.forEach(p => {
+                let px = mapX(p.x);
+                let py = mapY(p.y);
+                
+                // Draw a small star/circle
+                ctx.beginPath();
+                ctx.arc(px, py, 4, 0, Math.PI * 2);
+                ctx.fillStyle = "#60a5fa"; // blue-400
+                ctx.fill();
+                ctx.strokeStyle = "#ffffff";
+                ctx.lineWidth = 1;
+                ctx.stroke();
+            });
+
+            // Draw Optimal Line (Hidden by default, shown after answering)
+            if (showOptimal) {
+                let y1_opt = optimalM * 0 + optimalC;
+                let y2_opt = optimalM * 10 + optimalC;
+                ctx.beginPath();
+                ctx.moveTo(mapX(0), mapY(y1_opt));
+                ctx.lineTo(mapX(10), mapY(y2_opt));
+                ctx.strokeStyle = "rgba(74, 222, 128, 0.5)"; // Green transparent
+                ctx.lineWidth = 4;
+                ctx.setLineDash([5, 5]);
+                ctx.stroke();
+                ctx.setLineDash([]);
+            }
+
+            // Draw User Line (Phase 2)
+            if (userM !== null && userC !== null) {
+                let y1 = userM * 0 + userC;
+                let y2 = userM * 10 + userC;
+                
+                ctx.beginPath();
+                ctx.moveTo(mapX(0), mapY(y1));
+                ctx.lineTo(mapX(10), mapY(y2));
+                ctx.strokeStyle = "#fbbf24"; // amber-400
+                ctx.lineWidth = 3;
+                ctx.stroke();
+            }
+        }
+
+        // Game Flow Controller
+        function startGame() {
+            document.getElementById('start-screen').classList.add('hidden');
+            document.getElementById('game-screen').classList.remove('hidden');
+            
+            // Randomize levels order slightly (keep phase 1 first, phase 2 last)
+            let phase1 = levelsConfig.slice(0,3).sort(() => Math.random() - 0.5);
+            let phase2 = levelsConfig.slice(3,5).sort(() => Math.random() - 0.5);
+            levelsConfig.length = 0;
+            levelsConfig.push(...phase1, ...phase2);
+
+            currentLevel = 0;
+            totalScore = 0;
+            updateScoreDisplay();
+            loadLevel();
+        }
+
+        function loadLevel() {
+            if (currentLevel >= totalLevels) {
+                endGame();
+                return;
+            }
+
+            let config = levelsConfig[currentLevel];
+            currentData = generateData(config.truth);
+            trueCorrelation = config.truth;
+            
+            let optimal = calculateOptimalLine(currentData);
+            optimalM = optimal.m;
+            optimalC = optimal.c;
+
+            document.getElementById('level-display').innerText = `${currentLevel + 1} / ${totalLevels}`;
+
+            if (config.type === 'korelasi') {
+                document.getElementById('phase-display').innerText = "Fase 1: Tebak Korelasi";
+                document.getElementById('controls-phase-1').classList.remove('hidden');
+                document.getElementById('controls-phase-2').classList.add('hidden');
+                drawScene(currentData);
+            } else {
+                document.getElementById('phase-display').innerText = "Fase 2: Tarik Garis";
+                document.getElementById('controls-phase-1').classList.add('hidden');
+                document.getElementById('controls-phase-2').classList.remove('hidden');
+                
+                // Reset sliders
+                document.getElementById('slope-slider').value = 0;
+                document.getElementById('intercept-slider').value = 5;
+                updateLine();
+            }
+        }
+
+        // Logic Phase 1: Multiple Choice
+        function checkCorrelation(answer) {
+            let isCorrect = (answer === trueCorrelation);
+            let pointsEarned = isCorrect ? 100 : 0;
+            totalScore += pointsEarned;
+            updateScoreDisplay();
+
+            let title = isCorrect ? "Tepat Sekali!" : "Oops, Kurang Tepat!";
+            let icon = isCorrect ? "<i class='fa-solid fa-circle-check text-green-500'></i>" : "<i class='fa-solid fa-circle-xmark text-red-500'></i>";
+            
+            let explanation = "";
+            if(trueCorrelation === 'positif') explanation = "Pola data naik dari kiri bawah ke kanan atas (Korelasi Positif).";
+            else if(trueCorrelation === 'negatif') explanation = "Pola data turun dari kiri atas ke kanan bawah (Korelasi Negatif).";
+            else explanation = "Titik data tersebar acak tanpa pola yang jelas (Tidak Ada Korelasi).";
+
+            showModal(title, icon, explanation, () => {
+                currentLevel++;
+                loadLevel();
+            });
+        }
+
+        // Logic Phase 2: Drawing Line
+        function updateLine() {
+            let m = parseFloat(document.getElementById('slope-slider').value);
+            let c = parseFloat(document.getElementById('intercept-slider').value);
+            
+            document.getElementById('slope-val').innerText = m.toFixed(1);
+            document.getElementById('intercept-val').innerText = c.toFixed(1);
+
+            drawScene(currentData, m, c);
+        }
+
+        function checkLine() {
+            let userM = parseFloat(document.getElementById('slope-slider').value);
+            let userC = parseFloat(document.getElementById('intercept-slider').value);
+
+            // Calculate score based on how close user line is to optimal line at x=0 and x=10
+            let y0_user = userC;
+            let y10_user = userM * 10 + userC;
+            
+            let y0_opt = optimalC;
+            let y10_opt = optimalM * 10 + optimalC;
+
+            let diff0 = Math.abs(y0_user - y0_opt);
+            let diff10 = Math.abs(y10_user - y10_opt);
+            let avgDiff = (diff0 + diff10) / 2;
+
+            // Max possible score 100 for this level. 
+            // If avgDiff is 0, score 100. If avgDiff >= 4, score 0.
+            let pointsEarned = Math.max(0, Math.round(100 - (avgDiff * 25)));
+            totalScore += pointsEarned;
+            updateScoreDisplay();
+
+            drawScene(currentData, userM, userC, true); // Show optimal line
+
+            let title = pointsEarned > 80 ? "Luar Biasa!" : (pointsEarned > 50 ? "Lumayan Bagus!" : "Terus Berlatih!");
+            let icon = "<i class='fa-solid fa-ruler-combined text-yellow-400'></i>";
+            let text = `Garis tebakanmu mencetak skor <b>${pointsEarned}</b>/100.<br>Garis putus-putus hijau adalah Garis Regresi matematis yang sebenarnya (Garis Kuadrat Terkecil).`;
+
+            showModal(title, icon, text, () => {
+                currentLevel++;
+                loadLevel();
+            });
+        }
+
+        function updateScoreDisplay() {
+            document.getElementById('score-display').innerText = totalScore;
+        }
+
+        function endGame() {
+            document.getElementById('game-screen').classList.add('hidden');
+            document.getElementById('end-screen').classList.remove('hidden');
+            
+            // Animate score counting
+            let finalScoreEl = document.getElementById('final-score');
+            let currentDisplayScore = 0;
+            let interval = setInterval(() => {
+                currentDisplayScore += 5;
+                if(currentDisplayScore >= totalScore) {
+                    currentDisplayScore = totalScore;
+                    clearInterval(interval);
+                }
+                finalScoreEl.innerText = currentDisplayScore;
+            }, 20);
+
+            let feedback = document.getElementById('feedback-text');
+            if (totalScore >= 400) {
+                feedback.innerHTML = "Intuisimu sangat tajam! Kamu sudah sangat siap mempelajari materi <b>Metode Kuadrat Terkecil</b>.";
+                feedback.className = "mb-8 text-xl font-semibold text-green-400";
+            } else if (totalScore >= 250) {
+                feedback.innerHTML = "Pemahaman dasarmu sudah baik. Sedikit lagi mematangkan konsep korelasi dan garis best-fit, kamu akan menguasai bab ini!";
+                feedback.className = "mb-8 text-xl font-semibold text-yellow-400";
+            } else {
+                feedback.innerHTML = "Ini adalah awal yang baik. Mari kita pelajari bersama bagaimana matematika membantu kita menemukan pola data yang paling tepat.";
+                feedback.className = "mb-8 text-xl font-semibold text-gray-300";
+            }
+        }
+
+        // Custom Modal Logic
+        let modalCallback = null;
+        function showModal(title, iconHtml, text, callback) {
+            document.getElementById('modal-title').innerHTML = title;
+            document.getElementById('modal-icon').innerHTML = iconHtml;
+            document.getElementById('modal-text').innerHTML = text;
+            modalCallback = callback;
+            
+            const overlay = document.getElementById('modal-overlay');
+            const content = document.getElementById('modal-content');
+            
+            overlay.classList.remove('hidden');
+            overlay.classList.add('flex');
+            
+            // Trigger reflow for animation
+            void content.offsetWidth;
+            content.classList.remove('scale-90', 'opacity-0');
+            content.classList.add('scale-100', 'opacity-100');
+        }
+
+        function closeModal() {
+            const overlay = document.getElementById('modal-overlay');
+            const content = document.getElementById('modal-content');
+            
+            content.classList.remove('scale-100', 'opacity-100');
+            content.classList.add('scale-90', 'opacity-0');
+            
+            setTimeout(() => {
+                overlay.classList.add('hidden');
+                overlay.classList.remove('flex');
+                if (modalCallback) modalCallback();
+            }, 200); // Wait for transition
+        }
+
+        // Optional: Interactive Canvas hover for tooltips (simulating reading graph)
+        canvas.addEventListener('mousemove', (e) => {
+            const rect = canvas.getBoundingClientRect();
+            const mouseX = e.clientX - rect.left;
+            const mouseY = e.clientY - rect.top;
+
+            // Convert canvas pixel back to logic coordinate
+            let logicX = ((mouseX - padding) / (width - padding*2)) * dataMax;
+            let logicY = ((height - padding - mouseY) / (height - padding*2)) * dataMax;
+
+            if (logicX >= 0 && logicX <= 10 && logicY >= 0 && logicY <= 10) {
+                const tooltip = document.getElementById('tooltip');
+                tooltip.style.left = (e.clientX + 10) + 'px';
+                tooltip.style.top = (e.clientY + 10) + 'px';
+                tooltip.innerHTML = `(${logicX.toFixed(1)}, ${logicY.toFixed(1)})`;
+                tooltip.classList.remove('hidden');
+            } else {
+                document.getElementById('tooltip').classList.add('hidden');
+            }
+        });
+        canvas.addEventListener('mouseleave', () => {
+            document.getElementById('tooltip').classList.add('hidden');
+        });
+
+    </script>
+</body>
+</html>
